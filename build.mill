@@ -1,0 +1,53 @@
+package build
+
+import mill._
+import mill.scalalib._
+import mill.scalajslib._
+import mill.scalajslib.api.{ModuleKind, ModuleSplitStyle}
+
+val scala = "3.5.2"
+
+object shared extends Module {
+    def scalaVersion = scala
+    def deps = Agg(
+        ivy"com.github.cornerman::sloth::0.8.0",
+        ivy"io.circe::circe-core::0.14.9",
+        ivy"io.circe::circe-parser::0.14.9",
+    )
+
+    object jvm extends PlatformScalaModule {
+        def scalaVersion = scala
+        override def ivyDeps = deps
+    }
+
+    object js extends PlatformScalaModule with ScalaJSModule {
+        def scalaVersion = scala
+        def scalaJSVersion = "1.16.0"
+
+        override def ivyDeps = deps
+    }
+}
+
+object backend extends ScalaModule {
+    def scalaVersion = scala
+    override def moduleDeps = Seq(shared.jvm)
+    override def ivyDeps = Agg(
+        ivy"dev.zio::zio-http::3.0.0-RC7",
+    )
+
+    override def mainClass = Task(Some("ZioHttpServer"))
+}
+
+object frontend extends ScalaJSModule {
+    def scalaVersion = scala
+    override def moduleDeps = Seq(
+        shared.js,
+    )
+    def scalaJSVersion = "1.16.0"
+    override def ivyDeps = Agg(
+        ivy"org.scala-js::scalajs-dom::2.8.0",
+        ivy"com.raquo::laminar::17.0.0",
+        ivy"com.github.cornerman::sloth-jsdom-client::0.8.0"
+    )
+    override def moduleKind: Target[ModuleKind] = ModuleKind.ESModule
+}
